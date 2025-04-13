@@ -15,46 +15,160 @@ import * as path from "path";
 import * as os from "os";
 import type { default as ffmpegType } from "fluent-ffmpeg";
 
+/**
+ * @var isPlayingAudio
+ * @description 現在音声が再生中かどうかを示すフラグ
+ * @type {boolean}
+ */
 let isPlayingAudio = false;
 
+/**
+ * @var VOICEVOX_HOST
+ * @description VOICEVOXエンジンのホスト
+ * @type {string}
+ */
 const VOICEVOX_HOST: string = process.env.VOICEVOX_HOST || "127.0.0.1";
+
+/**
+ * @var VOICEVOX_PORT
+ * @description VOICEVOXエンジンのポート
+ * @type {string}
+ */
 const VOICEVOX_PORT: string = process.env.VOICEVOX_PORT || "50021";
+
+/**
+ * @var DEFAULT_SPEAKER
+ * @description デフォルトの話者ID
+ * @type {number}
+ */
 const DEFAULT_SPEAKER: number = parseInt(process.env.DEFAULT_SPEAKER || "3");
+
+/**
+ * @var VOLUME_SCALE
+ * @description 音量調整スケール
+ * @type {number}
+ */
 const VOLUME_SCALE: number = parseFloat(process.env.VOLUME_SCALE || "0.5");
+
+/**
+ * @var SPEED_SCALE
+ * @description 再生速度調整スケール
+ * @type {number}
+ */
 const SPEED_SCALE: number = parseFloat(process.env.SPEED_SCALE || "1.05");
+
+/**
+ * @var PRE_PHONEME_LENGTH
+ * @description 音素前の長さ
+ * @type {number}
+ */
 const PRE_PHONEME_LENGTH: number = parseFloat(process.env.PRE_PHONEME_LENGTH || "0.3");
+
+/**
+ * @var POST_PHONEME_LENGTH
+ * @description 音素後の長さ
+ * @type {number}
+ */
 const POST_PHONEME_LENGTH: number = parseFloat(process.env.POST_PHONEME_LENGTH || "0.3");
+
+/**
+ * @var INTONATION_SCALE
+ * @description イントネーション調整スケール
+ * @type {number}
+ */
 const INTONATION_SCALE: number = parseFloat(process.env.INTONATION_SCALE || "1.1");
+
+/**
+ * @var MAX_CHUNK_LENGTH
+ * @description テキストチャンクの最大長
+ * @type {number}
+ */
 const MAX_CHUNK_LENGTH: number = parseInt(process.env.MAX_CHUNK_LENGTH || "300");
+
+/**
+ * @var ENABLE_FFMPEG
+ * @description FFMPEGを使用するかどうか
+ * @type {boolean}
+ */
 const ENABLE_FFMPEG: boolean = process.env.ENABLE_FFMPEG === "true";
+
+/**
+ * @var NOISE_REDUCTION_LEVEL
+ * @description ノイズ低減レベル
+ * @type {number}
+ */
 const NOISE_REDUCTION_LEVEL: number = parseFloat(process.env.NOISE_REDUCTION_LEVEL || "0.15");
+
+/**
+ * @var HIGHPASS_FREQUENCY
+ * @description ハイパスフィルターの周波数
+ * @type {number}
+ */
 const HIGHPASS_FREQUENCY: number = parseInt(process.env.HIGHPASS_FREQUENCY || "100");
+
+/**
+ * @var LOWPASS_FREQUENCY
+ * @description ローパスフィルターの周波数
+ * @type {number}
+ */
 const LOWPASS_FREQUENCY: number = parseInt(process.env.LOWPASS_FREQUENCY || "8000");
 
+/**
+ * @interface SynthesisResult
+ * @description 音声合成結果を表すインターフェース
+ * @property {boolean} success - 合成が成功したかどうか
+ * @property {string} [tempFile] - 生成された一時音声ファイルのパス
+ */
 interface SynthesisResult {
   success: boolean;
   tempFile?: string;
 }
 
+/**
+ * @interface AudioResult
+ * @description 音声処理結果を表すインターフェース
+ * @property {boolean} success - 処理が成功したかどうか
+ */
 interface AudioResult {
   success: boolean;
 }
 
+/**
+ * @interface DialogueData
+ * @description 対話データを表すインターフェース
+ * @property {string} text - 発話テキスト
+ * @property {number} [speaker] - 話者ID
+ */
 interface DialogueData {
   text: string;
   speaker?: number;
 }
 
+/**
+ * @interface VoicevoxQueryData
+ * @description VOICEVOX APIに送信するクエリデータ
+ * @property {number} volumeScale - 音量スケール
+ * @property {number} speedScale - 速度スケール
+ * @property {number} prePhonemeLength - 音素前の長さ
+ * @property {number} postPhonemeLength - 音素後の長さ
+ * @property {number} intonationScale - イントネーションスケール
+ */
 interface VoicevoxQueryData {
   volumeScale: number;
   speedScale: number;
   prePhonemeLength: number;
   postPhonemeLength: number;
   intonationScale: number;
-  pitchScale?: number;
   [key: string]: any;
 }
 
+/**
+ * @interface Tool
+ * @description MCPツール定義のインターフェース
+ * @property {string} name - ツール名
+ * @property {string} description - ツールの説明
+ * @property {object} inputSchema - 入力スキーマ定義
+ */
 interface Tool {
   name: string;
   description: string;
@@ -65,6 +179,11 @@ interface Tool {
   };
 }
 
+/**
+ * @var GET_SPEAKERS_TOOL
+ * @description 話者一覧を取得するツール定義
+ * @type {Tool}
+ */
 const GET_SPEAKERS_TOOL: Tool = {
   name: "get_speakers",
   description: 
@@ -77,6 +196,11 @@ const GET_SPEAKERS_TOOL: Tool = {
   }
 };
 
+/**
+ * @var SPEAK_TOOL
+ * @description テキストを音声に変換して再生するツール定義
+ * @type {Tool}
+ */
 const SPEAK_TOOL: Tool = {
   name: "speak",
   description: 
@@ -111,6 +235,11 @@ const SPEAK_TOOL: Tool = {
   }
 };
 
+/**
+ * @var STOP_SPEAK_TOOL
+ * @description 音声再生を停止するツール定義
+ * @type {Tool}
+ */
 const STOP_SPEAK_TOOL: Tool = {
   name: "stop_speak",
   description: 
@@ -123,7 +252,9 @@ const STOP_SPEAK_TOOL: Tool = {
 };
 
 /**
- * FFMPEGモジュールを読み込む
+ * @function loadFfmpeg
+ * @description FFMPEGモジュールを読み込む
+ * @returns {Promise<typeof ffmpegType | null>} ffmpegモジュールのインスタンス、またはロードに失敗した場合はnull
  */
 async function loadFfmpeg(): Promise<typeof ffmpegType | null> {
   if (!ENABLE_FFMPEG) return null;
@@ -143,7 +274,10 @@ async function loadFfmpeg(): Promise<typeof ffmpegType | null> {
 }
 
 /**
- * テキストを文章に分割する
+ * @function splitTextIntoSentences
+ * @description テキストを文章に分割する
+ * @param {string} text - 分割する元のテキスト
+ * @returns {string[]} 分割された文章の配列
  */
 function splitTextIntoSentences(text: string): string[] {
   const sentences = text
@@ -159,7 +293,10 @@ function splitTextIntoSentences(text: string): string[] {
 }
 
 /**
- * オーディオファイルにフィルターを適用する
+ * @function applyAudioFilters
+ * @description オーディオファイルにフィルターを適用する
+ * @param {string} inputFile - 処理する入力ファイルのパス
+ * @returns {Promise<string>} 処理後のファイルパス
  */
 async function applyAudioFilters(inputFile: string): Promise<string> {
   if (!ENABLE_FFMPEG) return inputFile;
@@ -200,7 +337,11 @@ async function applyAudioFilters(inputFile: string): Promise<string> {
 }
 
 /**
- * 文章を音声に変換する
+ * @function synthesizeSentence
+ * @description 文章を音声に変換する
+ * @param {string} text - 変換するテキスト
+ * @param {number} [speaker=DEFAULT_SPEAKER] - 話者ID
+ * @returns {Promise<SynthesisResult>} 音声合成結果
  */
 async function synthesizeSentence(text: string, speaker: number = DEFAULT_SPEAKER): Promise<SynthesisResult> {
   try {
@@ -243,21 +384,31 @@ async function synthesizeSentence(text: string, speaker: number = DEFAULT_SPEAKE
 }
 
 /**
- * 再生状態を更新する
+ * @function updatePlayState
+ * @description 再生状態を更新する
+ * @param {boolean} isPlaying - 再生中かどうか
+ * @returns {void}
  */
 function updatePlayState(isPlaying: boolean): void {
   isPlayingAudio = isPlaying;
 }
 
 /**
- * 再生状態を確認する
+ * @function checkPlayState
+ * @description 再生状態を確認する
+ * @returns {boolean} 現在再生中かどうか
  */
 function checkPlayState(): boolean {
   return isPlayingAudio;
 }
 
 /**
- * オーディオプレーヤークラス
+ * @class AudioPlayer
+ * @description 音声再生を管理するクラス
+ * @property {boolean} initialized - 初期化済みかどうか
+ * @property {string} platform - 実行プラットフォーム
+ * @property {DialogueData[][]} queue - 音声再生キュー
+ * @property {boolean} isProcessing - 現在処理中かどうか
  */
 class AudioPlayer {
   private initialized: boolean;
@@ -266,7 +417,8 @@ class AudioPlayer {
   private isProcessing: boolean = false;
 
   /**
-   * オーディオプレーヤーを作成する
+   * @constructor
+   * @description オーディオプレーヤーを作成する
    */
   constructor() {
     this.initialized = false;
@@ -274,7 +426,9 @@ class AudioPlayer {
   }
 
   /**
-   * オーディオプレーヤーを初期化する
+   * @method initialize
+   * @description オーディオプレーヤーを初期化する
+   * @returns {Promise<void>}
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -284,7 +438,10 @@ class AudioPlayer {
   }
 
   /**
-   * 音声再生キューにダイアログを追加する
+   * @method addToQueue
+   * @description 音声再生キューにダイアログを追加する
+   * @param {DialogueData[]} dialogues - 追加するダイアログデータの配列
+   * @returns {Promise<void>}
    */
   async addToQueue(dialogues: DialogueData[]): Promise<void> {
     this.queue.push(dialogues);
@@ -294,7 +451,10 @@ class AudioPlayer {
   }
 
   /**
-   * キューを処理する
+   * @method processQueue
+   * @description キューを処理する
+   * @private
+   * @returns {Promise<void>}
    */
   private async processQueue(): Promise<void> {
     if (this.queue.length === 0) {
@@ -316,7 +476,9 @@ class AudioPlayer {
   }
 
   /**
-   * 音声再生を停止する
+   * @method stopAudio
+   * @description 音声再生を停止する
+   * @returns {Promise<boolean>} 停止が成功したかどうか
    */
   async stopAudio(): Promise<boolean> {
     try {
@@ -340,7 +502,10 @@ class AudioPlayer {
   }
 
   /**
-   * オーディオファイルを再生する
+   * @method playAudio
+   * @description オーディオファイルを再生する
+   * @param {string} tempFile - 再生する一時ファイルのパス
+   * @returns {Promise<AudioResult>} 再生結果
    */
   async playAudio(tempFile: string): Promise<AudioResult> {
     try {
@@ -382,19 +547,28 @@ class AudioPlayer {
 }
 
 /**
- * オーディオプレーヤーのインスタンス
+ * @var audioPlayer
+ * @description オーディオプレーヤーのインスタンス
+ * @type {AudioPlayer}
  */
 const audioPlayer = new AudioPlayer();
 
 /**
- * オーディオファイルを再生する
+ * @function playAudioFile
+ * @description 音声ファイルを再生する
+ * @param {string} tempFile - 再生する一時ファイルのパス
+ * @returns {Promise<AudioResult>} 再生結果
  */
 async function playAudioFile(tempFile: string): Promise<AudioResult> {
   return await audioPlayer.playAudio(tempFile);
 }
 
 /**
- * テキストを音声に変換して再生する
+ * @function textToSpeech
+ * @description テキストを音声に変換して再生する
+ * @param {string} text - 読み上げるテキスト
+ * @param {number} [speaker=DEFAULT_SPEAKER] - 話者ID
+ * @returns {Promise<AudioResult>} 音声処理結果
  */
 async function textToSpeech(text: string, speaker: number = DEFAULT_SPEAKER): Promise<AudioResult> {
   try {
@@ -432,7 +606,10 @@ async function textToSpeech(text: string, speaker: number = DEFAULT_SPEAKER): Pr
 }
 
 /**
- * 会話形式のテキストを音声に変換して再生する
+ * @function conversationToSpeech
+ * @description 会話形式のテキストを音声に変換して再生する
+ * @param {DialogueData[]} dialogues - 発話データの配列
+ * @returns {Promise<AudioResult>} 音声処理結果
  */
 async function conversationToSpeech(dialogues: DialogueData[]): Promise<AudioResult> {
   try {
@@ -463,7 +640,11 @@ async function conversationToSpeech(dialogues: DialogueData[]): Promise<AudioRes
 }
 
 /**
- * テキストチャンクを並列処理して音声に変換して再生する
+ * @function processChunksParallel
+ * @description テキストチャンクを並列処理して音声に変換して再生する
+ * @param {string[]} chunks - 処理するテキストチャンクの配列
+ * @param {number} speaker - 話者ID
+ * @returns {Promise<AudioResult>} 音声処理結果
  */
 async function processChunksParallel(chunks: string[], speaker: number): Promise<AudioResult> {
   if (chunks.length === 0) {
@@ -555,7 +736,9 @@ async function processChunksParallel(chunks: string[], speaker: number): Promise
 }
 
 /**
- * メイン関数
+ * @function main
+ * @description MCPサーバーを初期化して起動する
+ * @returns {Promise<void>}
  */
 async function main(): Promise<void> {
   try {
@@ -572,7 +755,9 @@ async function main(): Promise<void> {
     });
 
     /**
-     * 話者一覧を取得するツール
+     * @function get_speakers
+     * @description 話者一覧を取得するツール
+     * @returns {Promise<{content: Array<{type: string, text: string}>}>} 話者情報またはエラーメッセージ
      */
     server.tool(
       GET_SPEAKERS_TOOL.name,
@@ -592,7 +777,11 @@ async function main(): Promise<void> {
     );
 
     /**
-     * テキストを音声に変換して再生するツール
+     * @function speak
+     * @description テキストを音声に変換して再生するツール
+     * @param {Object} options - 入力オプション
+     * @param {DialogueData[]} options.dialogues - 会話データの配列
+     * @returns {Promise<{content: Array<{type: string, text: string}>}>} 処理結果メッセージ
      */
     server.tool(
       SPEAK_TOOL.name,
@@ -640,7 +829,9 @@ async function main(): Promise<void> {
     );
 
     /**
-     * 音声再生を停止するツール
+     * @function stop_speak
+     * @description 音声再生を停止するツール
+     * @returns {Promise<{content: Array<{type: string, text: string}>}>} 停止処理結果メッセージ
      */
     server.tool(
       STOP_SPEAK_TOOL.name,
