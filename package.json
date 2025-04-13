@@ -1,6 +1,6 @@
 {
   "name": "mcp-voicevox",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "VOICEVOXを使用するMCPサーバー",
   "main": "dist/index.js",
   "bin": {

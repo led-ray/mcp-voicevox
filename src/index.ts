@@ -187,9 +187,9 @@ interface Tool {
 const GET_SPEAKERS_TOOL: Tool = {
   name: "get_speakers",
   description: 
-    "VOICEVOXエンジンの利用可能な話者（キャラクター）情報を取得します。" +
-    "各話者のID、名前、スタイル情報などが含まれます。" +
-    "音声合成前に適切な話者を選択するために使用します。",
+    "Retrieves available speakers (characters) information from the VOICEVOX engine. " +
+    "Includes each speaker's ID, name, style information, etc. " +
+    "Used to select an appropriate speaker before voice synthesis.",
   inputSchema: {
     type: "object",
     properties: {}
@@ -204,27 +204,25 @@ const GET_SPEAKERS_TOOL: Tool = {
 const SPEAK_TOOL: Tool = {
   name: "speak",
   description: 
-    "テキストを音声に変換して再生します。" +
-    "単一話者による発話や、複数話者による会話形式の読み上げに対応しています。" +
-    "各話者には異なる声質や特性があり、感情表現や読み方に影響します。" +
-    "長いテキストは自動的に分割されて適切なタイミングで再生されます。" +
-    "音声処理機能が有効な場合は、より聞き取りやすい音質に調整されます。",
+    "Converts text to speech and plays it back. " +
+    "Supports speech by a single speaker or reading in conversation format with multiple speakers. " +
+    "Each speaker has different voice qualities and characteristics that affect emotion expression and reading style. ",
   inputSchema: {
     type: "object",
     properties: {
       dialogues: {
         type: "array",
-        description: "会話形式のダイアログリスト（話者IDとテキストのペアの配列）",
+        description: "List of conversation dialogues (array of speaker ID and text pairs)",
         items: {
           type: "object",
           properties: {
             text: {
               type: "string",
-              description: "読み上げるテキスト"
+              description: "Text to be read aloud"
             },
             speaker: {
               type: "number",
-              description: "話者ID（デフォルト: 3, ずんだもん）"
+              description: "Speaker ID (default: 3, Zundamon)"
             }
           },
           required: ["text"]
@@ -243,8 +241,8 @@ const SPEAK_TOOL: Tool = {
 const STOP_SPEAK_TOOL: Tool = {
   name: "stop_speak",
   description: 
-    "現在再生中の音声を停止します。" +
-    "読み上げを途中で中断する場合に使用します。",
+    "Stops currently playing audio. " +
+    "Used to interrupt playback in the middle.",
   inputSchema: {
     type: "object",
     properties: {}
@@ -751,7 +749,7 @@ async function main(): Promise<void> {
     const server = new McpServer({
       name: "voicevox",
       version: "1.0.0",
-      description: "VOICEVOXを使用してテキストを音声に変換します"
+      description: "Converts text to speech using VOICEVOX"
     });
 
     /**
@@ -770,7 +768,7 @@ async function main(): Promise<void> {
           };
         } catch (error) {
           return {
-            content: [{ type: "text", text: "エラー: 話者情報の取得に失敗しました" }]
+            content: [{ type: "text", text: "Error: Failed to retrieve speaker information" }]
           };
         }
       }
@@ -785,19 +783,20 @@ async function main(): Promise<void> {
      */
     server.tool(
       SPEAK_TOOL.name,
+      SPEAK_TOOL.description,
       {
         dialogues: z.array(
           z.object({
-            text: z.string().describe("読み上げるテキスト"),
-            speaker: z.number().optional().describe("話者ID（デフォルト: 3, ずんだもん）")
+            text: z.string().describe("Text to be read aloud"),
+            speaker: z.number().optional().describe("Speaker ID (default: 3, Zundamon)")
           })
-        ).describe("会話形式のダイアログリスト（話者IDとテキストのペアの配列）")
+        ).describe("List of conversation dialogues (array of speaker ID and text pairs)")
       },
       async ({ dialogues }) => {
         try {
           if (!Array.isArray(dialogues) || dialogues.length === 0) {
             return {
-              content: [{ type: "text", text: "エラー: 有効な会話データが提供されていません" }]
+              content: [{ type: "text", text: "Error: No valid conversation data provided" }]
             };
           }
 
@@ -808,12 +807,12 @@ async function main(): Promise<void> {
 
           audioPlayer.addToQueue(typedDialogues);
           
-          let message = "会話の読み上げを開始しました";
+          let message = "Started reading the conversation";
           
           if (ENABLE_FFMPEG) {
             const ffmpeg = await loadFfmpeg();
             if (ffmpeg) {
-              message += "（オーディオフィルター適用）";
+              message += " (audio filters applied)";
             }
           }
           
@@ -822,7 +821,7 @@ async function main(): Promise<void> {
           };
         } catch (error) {
           return {
-            content: [{ type: "text", text: "音声合成の開始に失敗しました" }]
+            content: [{ type: "text", text: "Failed to start voice synthesis" }]
           };
         }
       }
@@ -835,13 +834,14 @@ async function main(): Promise<void> {
      */
     server.tool(
       STOP_SPEAK_TOOL.name,
+      STOP_SPEAK_TOOL.description,
       {},
       async () => {
         const result = await audioPlayer.stopAudio();
         return {
           content: [{ 
             type: "text", 
-            text: result ? "音声再生を停止しました" : "音声再生の停止に失敗しました" 
+            text: result ? "Stopped audio playback" : "Failed to stop audio playback" 
           }]
         };
       }
