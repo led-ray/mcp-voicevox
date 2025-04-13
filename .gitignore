@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.npm
+
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Visual Studio Code
+.vscode/
+.history/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# バックアップファイル
+*.bak
+
+# その他
+.idea/
+.cache/ 
